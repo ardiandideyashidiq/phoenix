@@ -16,11 +16,16 @@ uv sync
 ```bash
 uv run phoenix login -e you@example.com        # prompts for the password
 uv run phoenix firmware X6871                  # list versions (free)
+uv run phoenix firmware "X6871(Android 16)"    # list one variant only
 uv run phoenix download X6871 X6871-H895DE-U-EU-250717V3825 -o ./firmware -w 4
 uv run phoenix models
 uv run phoenix status
 uv run phoenix logout
 ```
+
+Phoenix keeps a separate catalogue per variant (`X670-T`, `X6871(Android 15)`,
+`X6871(Android 16)`). A bare code lists all of them, newest first, and
+`download` picks the right catalogue for the version.
 
 Global options go before the command:
 

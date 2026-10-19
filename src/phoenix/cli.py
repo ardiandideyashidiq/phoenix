@@ -168,14 +168,23 @@ def models(app: App) -> None:
 @click.argument("project")
 @click.pass_obj
 def firmware(app: App, project: str) -> None:
-    """List firmware versions for PROJECT (free)."""
+    """List firmware versions for PROJECT (free).
+
+    A bare code also searches its variants, so X670 includes X670-T and
+    X6871 includes X6871(Android 15) and X6871(Android 16).
+    """
     versions = FirmwareService(app.authenticated()).list(project)
     if not versions:
         console.print("[yellow]No firmware found[/yellow]")
         return
-    table = Table("Version", "Market", "Date")
+    table = Table("Version", "Project", "Market", "Date")
     for version in versions:
-        table.add_row(version.version, version.market or "-", version.date or "-")
+        table.add_row(
+            version.version,
+            version.project or project.upper(),
+            version.market or "-",
+            version.date or "-",
+        )
     console.print(f"[bold]{len(versions)}[/bold] firmware version(s) for {project.upper()}")
     console.print(table)
 
