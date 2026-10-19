@@ -1,57 +1,36 @@
 # phoenix
 
 Transsion firmware client for [phoenixservicetool.com](https://phoenixservicetool.com).
-
-`firmware_list` is free; `firmware_link` (mapping a version to a share) costs one credit.
+Listing is free; resolving a version to a share (`download`) costs one credit.
 
 ## Install
 
 ```bash
-cd phoenix
-uv sync
+uv tool install git+https://github.com/ardiandideyashidiq/phoenix.git
+# from a checkout: uv sync
 ```
 
 ## Usage
 
 ```bash
-uv run phoenix login -e you@example.com        # prompts for the password
-uv run phoenix firmware X6871                  # list versions (free)
-uv run phoenix firmware "X6871(Android 16)"    # list one variant only
-uv run phoenix download X6871 X6871-H895DE-U-EU-250717V3825 -o ./firmware -w 4
-uv run phoenix models
-uv run phoenix status
-uv run phoenix logout
+phoenix login -e you@example.com        # password prompt; or PHOENIX_EMAIL/PHOENIX_PASSWORD
+phoenix firmware X6871                  # list versions (free), newest first
+phoenix firmware "X6871(Android 16)"    # one variant only
+phoenix download X6871 <version> -o ./firmware -w 4
+phoenix models                           # also: status, logout
 ```
+
+Global flags go before the command (`--no-verify-ssl`, `--session-file PATH`, `-v`).
+The token is saved to `~/.phoenix_session.json` (mode 0600).
 
 Phoenix keeps a separate catalogue per variant (`X670-T`, `X6871(Android 15)`,
-`X6871(Android 16)`). A bare code lists all of them, newest first, and
-`download` picks the right catalogue for the version.
+`X6871(Android 16)`). A bare code lists all of them; `download` resolves the right one.
 
-Global options go before the command:
+## Downloads
 
-```bash
-uv run phoenix --no-verify-ssl --session-file ./session.json firmware X6871
-uv run phoenix -v firmware X6871
-```
-
-Credentials can also come from `PHOENIX_EMAIL` / `PHOENIX_PASSWORD`. The session token is
-stored in `~/.phoenix_session.json` (mode 0600) and reused until the server rejects it.
-
-### Downloads
-
-The printed share URL includes `?pwd=...`. Files are fetched with ranged requests over
-`--workers` connections (default 4, `1` disables parallelism), and interrupted downloads
-resume from `*.part` / `*.part.json` when you run the same command again. Short-lived
-signed URLs are refreshed automatically during retries.
-
-### Legacy flags
-
-`phoenix_api_client.py` at the repository root still accepts the old interface:
-
-```bash
-python3 phoenix_api_client.py --firmware X6871
-python3 phoenix_api_client.py --download --project X6871 --version-id V1 --output-dir ./fw
-```
+The share URL includes `?pwd=...`. Files are ranged over `--workers` connections
+(default 4, `1` disables parallelism), resume from `*.part`/`*.part.json`, and
+refresh expired signed URLs automatically.
 
 ## Library
 
@@ -63,14 +42,14 @@ client.restore() or client.login("you@example.com", "password")
 
 versions = FirmwareService(client).list("X6871")
 share = FirmwareService(client).link("X6871", versions[0].version)
-files = FrboxClient().resolve(share)
-for path in (Downloader("./firmware").save(f) for f in files):
+for path in (Downloader("./firmware").save(f) for f in FrboxClient().resolve(share)):
     print(path)
 ```
 
-## Tests
+## Development
 
 ```bash
 uv run pytest
 uv run ruff check .
+python3 phoenix_api_client.py --firmware X6871   # legacy flat-flag interface
 ```
