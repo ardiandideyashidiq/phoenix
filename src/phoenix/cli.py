@@ -22,7 +22,7 @@ from rich.progress import (
 from rich.table import Table
 
 from .client import PhoenixClient
-from .config import EP_REGISTER, Settings
+from .config import Settings
 from .downloader import Downloader
 from .errors import PhoenixError
 from .firmware import FirmwareService
@@ -129,42 +129,6 @@ def login(app: App, email: str | None, password: str | None, no_save: bool) -> N
 
 
 @cli.command()
-@click.pass_obj
-def logout(app: App) -> None:
-    """Clear the saved session."""
-    console.print("Session cleared" if app.client.logout() else "No saved session")
-
-
-@cli.command()
-@click.pass_obj
-def status(app: App) -> None:
-    """Check server status (public)."""
-    data = app.client.server_status()
-    console.print(f"[bold]Status:[/bold] {data.get('status', '?')}")
-    if data.get("message"):
-        console.print(str(data["message"]))
-
-
-@cli.command()
-@click.pass_obj
-def info(app: App) -> None:
-    """Show server information."""
-    console.print_json(data=app.authenticated().server_info())
-
-
-@cli.command()
-@click.pass_obj
-def models(app: App) -> None:
-    """List device models."""
-    items = app.authenticated().models()
-    table = Table("Brand", "Model")
-    for item in items:
-        table.add_row(item.brand, item.model)
-    console.print(f"[bold]{len(items)}[/bold] model(s)")
-    console.print(table)
-
-
-@cli.command()
 @click.argument("project")
 @click.pass_obj
 def firmware(app: App, project: str) -> None:
@@ -266,15 +230,6 @@ def download(
     console.print(f"[green]Downloaded {len(paths)} file(s)[/green]")
 
 
-@cli.command()
-@click.pass_obj
-def register(app: App) -> None:
-    """Open the registration page."""
-    url = app.settings.base_url.rstrip("/") + EP_REGISTER
-    console.print(url)
-    click.launch(url)
-
-
 def run(argv: list[str]) -> int:
     """Run the CLI and turn expected failures into exit codes."""
     try:
@@ -309,31 +264,16 @@ def _legacy_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-verify-ssl", action="store_true")
     parser.add_argument("--no-session", action="store_true")
     parser.add_argument("--login", action="store_true")
-    parser.add_argument("--logout", action="store_true")
-    parser.add_argument("--status", action="store_true")
-    parser.add_argument("--info", action="store_true")
-    parser.add_argument("--models", action="store_true")
     parser.add_argument("--list-firmware", action="store_true")
     parser.add_argument("--firmware", metavar="PROJECT")
     parser.add_argument("--project")
     parser.add_argument("--version-id")
     parser.add_argument("--download", action="store_true")
     parser.add_argument("--output-dir", default=".")
-    parser.add_argument("--register", action="store_true")
     return parser
 
 
 def _legacy_command(args: argparse.Namespace) -> list[str]:
-    if args.logout:
-        return ["logout"]
-    if args.register:
-        return ["register"]
-    if args.status:
-        return ["status"]
-    if args.info:
-        return ["info"]
-    if args.models:
-        return ["models"]
     project = args.firmware or args.project
     if args.firmware or args.list_firmware:
         if not project:

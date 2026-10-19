@@ -4,6 +4,7 @@ import base64
 import json
 from typing import ClassVar
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -71,8 +72,8 @@ def test_help_lists_subcommands():
     result = CliRunner().invoke(cli_module.cli, ["--help"])
 
     assert result.exit_code == 0
-    for command in ("login", "firmware", "download", "models"):
-        assert command in result.output
+    commands = set(cli_module.cli.list_commands(click.Context(cli_module.cli)))
+    assert commands == {"login", "firmware", "download"}
 
 
 def test_login_prompts_for_missing_credentials(fake_client, monkeypatch, tmp_path):

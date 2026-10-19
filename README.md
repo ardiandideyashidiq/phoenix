@@ -17,7 +17,6 @@ phoenix login -e you@example.com        # password prompt; or PHOENIX_EMAIL/PHOE
 phoenix firmware X6871                  # list versions (free), newest first
 phoenix firmware "X6871(Android 16)"    # one variant only
 phoenix download X6871 <version> -o ./firmware -w 4
-phoenix models                           # also: status, logout
 ```
 
 Global flags go before the command (`--no-verify-ssl`, `--session-file PATH`, `-v`).
