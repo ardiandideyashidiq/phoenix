@@ -7,6 +7,7 @@ import pytest
 
 from phoenix.errors import OperationError
 from phoenix.firmware import FirmwareService, decode_payload, normalize_project
+from phoenix.models import ShareLink
 
 
 class StubClient:
@@ -68,6 +69,22 @@ def test_link_decodes_url_and_password():
     assert share.url == url
     assert share.share_id == "SID"
     assert share.password == "secret"
+    assert share.public_url == url
+
+
+def test_public_url_appends_password():
+    share = ShareLink.from_url("https://frbox.transsion.com/disk/s/SID", password="p w&")
+    assert share.public_url == "https://frbox.transsion.com/disk/s/SID?pwd=p+w%26"
+
+
+def test_public_url_does_not_duplicate_password():
+    url = "https://frbox.transsion.com/disk/s/SID?pwd=already"
+    assert ShareLink.from_url(url, "other").public_url == url
+
+
+def test_public_url_without_password():
+    url = "https://frbox.transsion.com/disk/s/SID"
+    assert ShareLink.from_url(url).public_url == url
 
 
 def test_link_accepts_plain_url():

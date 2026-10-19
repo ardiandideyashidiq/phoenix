@@ -16,7 +16,7 @@ uv sync
 ```bash
 uv run phoenix login -e you@example.com        # prompts for the password
 uv run phoenix firmware X6871                  # list versions (free)
-uv run phoenix download X6871 X6871-H895DE-U-EU-250717V3825 -o ./firmware
+uv run phoenix download X6871 X6871-H895DE-U-EU-250717V3825 -o ./firmware -w 4
 uv run phoenix models
 uv run phoenix status
 uv run phoenix logout
@@ -31,6 +31,13 @@ uv run phoenix -v firmware X6871
 
 Credentials can also come from `PHOENIX_EMAIL` / `PHOENIX_PASSWORD`. The session token is
 stored in `~/.phoenix_session.json` (mode 0600) and reused until the server rejects it.
+
+### Downloads
+
+The printed share URL includes `?pwd=...`. Files are fetched with ranged requests over
+`--workers` connections (default 4, `1` disables parallelism), and interrupted downloads
+resume from `*.part` / `*.part.json` when you run the same command again. Short-lived
+signed URLs are refreshed automatically during retries.
 
 ### Legacy flags
 

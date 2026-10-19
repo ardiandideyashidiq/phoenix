@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import rich_click as click
@@ -179,7 +180,11 @@ def firmware(app: App, project: str) -> None:
     console.print(table)
 
 
-def _download_one(downloader: Downloader, item: RemoteFile) -> Path:
+def _download_one(
+    downloader: Downloader,
+    item: RemoteFile,
+    refresh_url: Callable[[], str],
+) -> Path:
     with Progress(
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
@@ -198,7 +203,7 @@ def _download_one(downloader: Downloader, item: RemoteFile) -> Path:
                 progress.update(task, total=total)
             progress.update(task, completed=downloaded)
 
-        path = downloader.save(item, on_progress=on_progress)
+        path = downloader.save(item, on_progress=on_progress, refresh_url=refresh_url)
     console.print(f"[green]Saved[/green] {path}")
     return path
 
@@ -216,6 +221,14 @@ def _download_one(downloader: Downloader, item: RemoteFile) -> Path:
 )
 @click.option("--overwrite", is_flag=True, help="Replace existing files.")
 @click.option("-y", "--yes", is_flag=True, help="Skip the credit confirmation.")
+@click.option(
+    "-w",
+    "--workers",
+    type=click.IntRange(1, 32),
+    default=4,
+    show_default=True,
+    help="Parallel connections (1 disables parallelism).",
+)
 @click.pass_obj
 def download(
     app: App,
@@ -224,6 +237,7 @@ def download(
     output_dir: Path,
     overwrite: bool,
     yes: bool,
+    workers: int,
 ) -> None:
     """Download VERSION for PROJECT (costs one credit)."""
     if not yes:
@@ -232,10 +246,14 @@ def download(
             abort=True,
         )
     share = FirmwareService(app.authenticated()).link(project, version)
-    console.print(f"Share: [cyan]{share.url}[/cyan]")
-    files = FrboxClient(app.settings).resolve(share)
-    downloader = Downloader(output_dir, overwrite=overwrite)
-    paths = [_download_one(downloader, item) for item in files]
+    console.print(f"Share: [cyan]{share.public_url}[/cyan]")
+    frbox = FrboxClient(app.settings)
+    files = frbox.resolve(share)
+    downloader = Downloader(output_dir, overwrite=overwrite, workers=workers)
+    paths = [
+        _download_one(downloader, item, lambda item=item: frbox.download_url(share, item))
+        for item in files
+    ]
     console.print(f"[green]Downloaded {len(paths)} file(s)[/green]")
 
 

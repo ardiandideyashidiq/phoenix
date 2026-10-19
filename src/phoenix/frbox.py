@@ -27,6 +27,7 @@ class FrboxClient:
         self.settings = settings or Settings.from_env()
         self.http = http or requests.Session()
         self.http.headers.update({"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
+        self._tokens: dict[str, str] = {}
 
     def resolve(self, share: ShareLink) -> list[RemoteFile]:
         """Return every file in the share, with a fresh download URL."""
@@ -95,6 +96,9 @@ class FrboxClient:
     # --- share flow --------------------------------------------------
 
     def _share_token(self, share: ShareLink) -> str:
+        cached = self._tokens.get(share.share_id)
+        if cached:
+            return cached
         payload: dict[str, Any] = {"share_id": share.share_id}
         if share.password:
             # Aliyun PDS expects "share_pwd", not "password".
@@ -104,7 +108,27 @@ class FrboxClient:
         if not token:
             raise ShareError(f"No share token returned: {str(data)[:300]}")
         logger.debug("Got share token (expires {})", data.get("expire_time", "?"))
+        self._tokens[share.share_id] = str(token)
         return str(token)
+
+    def download_url(self, share: ShareLink, file: RemoteFile) -> str:
+        """Fetch a fresh (short-lived) download URL for one file."""
+        token = self._share_token(share)
+        try:
+            data = self._post(
+                "/v2/file/get_download_url",
+                {"share_id": share.share_id, "file_id": file.file_id},
+                referer=share.url,
+                share_token=token,
+            )
+        except ShareError:
+            # The share token may have expired; force a new one on retry.
+            self._tokens.pop(share.share_id, None)
+            raise
+        url = data.get("url") or data.get("download_url")
+        if not url:
+            raise ShareError(f"No download URL returned for {file.name}")
+        return str(url)
 
     def _walk(self, share: ShareLink, token: str) -> list[RemoteFile]:
         files: list[RemoteFile] = []
@@ -155,16 +179,8 @@ class FrboxClient:
 
     def _with_fresh_url(self, share: ShareLink, token: str, item: RemoteFile) -> RemoteFile:
         try:
-            data = self._post(
-                "/v2/file/get_download_url",
-                {"share_id": share.share_id, "file_id": item.file_id},
-                referer=share.url,
-                share_token=token,
-            )
+            url = self.download_url(share, item)
         except ShareError as exc:
             logger.warning("Keeping listing URL for {}: {}", item.name, exc)
             return item
-        url = data.get("url") or data.get("download_url")
-        if not url:
-            return item
-        return replace(item, download_url=str(url))
+        return replace(item, download_url=url)

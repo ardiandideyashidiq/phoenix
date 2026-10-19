@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +37,18 @@ class ShareLink:
     def share_id(self) -> str:
         parts = [part for part in urlparse(self.url).path.split("/") if part]
         return parts[-1] if parts else ""
+
+    @property
+    def public_url(self) -> str:
+        """Share URL including ``?pwd=``, for browsers and copy/paste."""
+        if not self.password:
+            return self.url
+        parsed = urlparse(self.url)
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        if "pwd" in query:
+            return self.url
+        query["pwd"] = [self.password]
+        return urlunparse(parsed._replace(query=urlencode(query, doseq=True)))
 
     @classmethod
     def from_url(cls, url: str, password: str | None = None) -> ShareLink:

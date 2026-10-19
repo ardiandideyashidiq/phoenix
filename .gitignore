@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Partial downloads
+*.part
+*.part.json
