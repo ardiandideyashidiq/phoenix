@@ -59,9 +59,8 @@ def _credentials(
 
 
 class App:
-    def __init__(self, settings: Settings, *, no_session: bool = False) -> None:
+    def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.no_session = no_session
         self._client: PhoenixClient | None = None
 
     @property
@@ -72,7 +71,7 @@ class App:
 
     def authenticated(self) -> PhoenixClient:
         client = self.client
-        if not self.no_session and client.restore():
+        if client.restore():
             return client
         email, password = _credentials()
         client.login(email, password)
@@ -82,36 +81,12 @@ class App:
 @click.group(
     context_settings={"help_option_names": ["-h", "--help"], "max_content_width": 100},
 )
-@click.option("--base-url", default=None, help="API base URL.")
-@click.option("--no-verify-ssl", is_flag=True, help="Disable TLS verification.")
-@click.option(
-    "--session-file",
-    type=click.Path(path_type=Path, dir_okay=False),
-    default=None,
-    help="Session file path.",
-)
-@click.option("--no-session", is_flag=True, help="Ignore the saved session.")
 @click.option("-v", "--verbose", count=True, help="Log verbosity (-v info, -vv debug).")
-@click.version_option(package_name="phoenix")
 @click.pass_context
-def cli(
-    ctx: click.Context,
-    base_url: str | None,
-    no_verify_ssl: bool,
-    session_file: Path | None,
-    no_session: bool,
-    verbose: int,
-) -> None:
+def cli(ctx: click.Context, verbose: int) -> None:
     """Transsion firmware client for phoenixservicetool.com."""
     _configure_logging(verbose)
-    overrides: dict[str, object] = {}
-    if base_url:
-        overrides["base_url"] = base_url
-    if no_verify_ssl:
-        overrides["verify_ssl"] = False
-    if session_file:
-        overrides["session_file"] = session_file
-    ctx.obj = App(Settings.from_env(**overrides), no_session=no_session)
+    ctx.obj = App(Settings.from_env())
 
 
 @cli.command()
@@ -260,9 +235,6 @@ def _legacy_parser() -> argparse.ArgumentParser:
     parser.add_argument("-h", "--help", action="store_true")
     parser.add_argument("-e", "--email")
     parser.add_argument("-p", "--password")
-    parser.add_argument("--base-url")
-    parser.add_argument("--no-verify-ssl", action="store_true")
-    parser.add_argument("--no-session", action="store_true")
     parser.add_argument("--login", action="store_true")
     parser.add_argument("--list-firmware", action="store_true")
     parser.add_argument("--firmware", metavar="PROJECT")
@@ -296,27 +268,19 @@ def legacy_main(argv: list[str] | None = None) -> int:
     if args.password:
         os.environ["PHOENIX_PASSWORD"] = args.password
 
-    global_args: list[str] = []
-    if args.base_url:
-        global_args += ["--base-url", args.base_url]
-    if args.no_verify_ssl:
-        global_args.append("--no-verify-ssl")
-    if args.no_session:
-        global_args.append("--no-session")
-
     if args.help:
-        return run([*global_args, "--help"])
+        return run(["--help"])
     if args.login:
         login_args = ["login"]
         if args.email:
             login_args += ["-e", args.email]
         if args.password:
             login_args += ["-p", args.password]
-        code = run([*global_args, *login_args])
+        code = run(login_args)
         if code:
             return code
         command = _legacy_command(args)
-        return run([*global_args, *command]) if command else 0
+        return run(command) if command else 0
 
     command = _legacy_command(args)
-    return run([*global_args, *command]) if command else run([*global_args, "--help"])
+    return run(command) if command else run(["--help"])

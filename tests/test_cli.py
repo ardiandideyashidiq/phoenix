@@ -58,10 +58,8 @@ def fake_client(monkeypatch):
     return FakeClient
 
 
-def test_firmware_lists_versions(fake_client, tmp_path):
-    result = CliRunner().invoke(
-        cli_module.cli, ["--session-file", str(tmp_path / "s.json"), "firmware", "x6871"]
-    )
+def test_firmware_lists_versions(fake_client):
+    result = CliRunner().invoke(cli_module.cli, ["firmware", "x6871"])
 
     assert result.exit_code == 0, result.output
     assert "X6871-H1-EU" in result.output
@@ -76,13 +74,13 @@ def test_help_lists_subcommands():
     assert commands == {"login", "firmware", "download"}
 
 
-def test_login_prompts_for_missing_credentials(fake_client, monkeypatch, tmp_path):
+def test_login_prompts_for_missing_credentials(fake_client, monkeypatch):
     monkeypatch.delenv("PHOENIX_EMAIL", raising=False)
     monkeypatch.delenv("PHOENIX_PASSWORD", raising=False)
 
     result = CliRunner().invoke(
         cli_module.cli,
-        ["--session-file", str(tmp_path / "s.json"), "login"],
+        ["login"],
         input="user@example.com\nsecret\n",
     )
 
@@ -91,13 +89,11 @@ def test_login_prompts_for_missing_credentials(fake_client, monkeypatch, tmp_pat
     assert "Logged in" in result.output
 
 
-def test_login_reads_environment(fake_client, monkeypatch, tmp_path):
+def test_login_reads_environment(fake_client, monkeypatch):
     monkeypatch.setenv("PHOENIX_EMAIL", "env@example.com")
     monkeypatch.setenv("PHOENIX_PASSWORD", "envsecret")
 
-    result = CliRunner().invoke(
-        cli_module.cli, ["--session-file", str(tmp_path / "s.json"), "login"]
-    )
+    result = CliRunner().invoke(cli_module.cli, ["login"])
 
     assert result.exit_code == 0, result.output
     assert fake_client.instances[-1].logins == [("env@example.com", "envsecret")]

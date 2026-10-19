@@ -19,8 +19,9 @@ phoenix firmware "X6871(Android 16)"    # one variant only
 phoenix download X6871 <version> -o ./firmware -w 4
 ```
 
-Global flags go before the command (`--no-verify-ssl`, `--session-file PATH`, `-v`).
-The token is saved to `~/.phoenix_session.json` (mode 0600).
+`-v` raises log verbosity. `PHOENIX_BASE_URL`, `PHOENIX_NO_VERIFY_SSL` and
+`PHOENIX_SESSION_FILE` override the defaults; the token is saved to
+`~/.phoenix_session.json` (mode 0600).
 
 Phoenix keeps a separate catalogue per variant (`X670-T`, `X6871(Android 15)`,
 `X6871(Android 16)`). A bare code lists all of them; `download` resolves the right one.
